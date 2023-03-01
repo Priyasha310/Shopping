@@ -47,11 +47,10 @@ app.post("/register", function(req, res){
             email: req.body.username, 
             password: hash
         });
-        newUser.save(function(err){
-            if(!err)
-                res.render("home");
-            else
-                res.send(err);
+        newUser.save().then(()=>{
+            res.render("home");
+        }).catch((err)=>{
+            console.log(err);
         })
     });
 });
@@ -60,20 +59,20 @@ app.post("/login", function(req, res){
     const username = req.body.username;
     const password = req.body.password;
 
-    Cust.findOne({email: username}, function(err, foundUser){
-        if(err)
-            console.log(err);
-        else{   //registered user
-            if(foundUser){
-                bcrypt.compare(password, foundUser.password, function(err, result) {//successful authentication
-                    if(result == true)
-                        res.render("home");// result == true
-                });
-                
-            }
+    Cust.findOne({email: username})
+    .then((foundUser) => {   //registered user
+        if(foundUser){
+            bcrypt.compare(password, foundUser.password)
+            .then((result) => {//successful authentication
+                if(result == true)
+                    res.render("home");// result == true
+            });
         }
     })
-})
+    .catch((err) => {
+        console.log(err);
+    });
+});
 ///////////////////////////////////////////////////////////////////////////////////////////
 
 
