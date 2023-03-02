@@ -19,7 +19,14 @@ app.use(bodyParser.urlencoded({extended:true}));
 
 const mongoose = require("mongoose");
 // const encrypt = require("mongoose-encryption");
-mongoose.connect("mongodb://127.0.0.1:27017/custDB", {useNewUrlParser: true});
+// mongoose.connect("mongodb://127.0.0.1:27017/custDB", {useNewUrlParser: true});
+mongoose 
+ .connect("mongodb://127.0.0.1:27017/custDB", {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        useCreateIndex: true,   })   
+ .then(() => console.log("Database connected!"))
+ .catch(err => console.log(err));
 
 const custSchema = new mongoose.Schema({
     email: String, 
@@ -42,7 +49,8 @@ app.get("/login", function(req, res){
 
 
 app.post("/register", function(req, res){
-    bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+    bcrypt.hash(req.body.password, saltRounds)
+    .then((hash) => {
         const newUser = new Cust({
             email: req.body.username, 
             password: hash
