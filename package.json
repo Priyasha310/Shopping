@@ -19,7 +19,7 @@
     "md5": "^2.3.0",
     "mongoose": "^7.0.0",
     "mongoose-encryption": "^2.1.2",
-    "node": "^19.4.0",
+    "node": "^19.6.1",
     "request": "^2.88.2"
   },
   "keywords": [],
