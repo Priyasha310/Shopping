@@ -2,40 +2,64 @@ require("dotenv").config();
 const _ = require("lodash");
 const express = require("express");
 const bodyParser = require("body-parser");
-const request = require("request");
-const fs = require("fs");
-const https = require("https");
 const ejs = require("ejs");
-const app = express();
-// const md5 = require("md5");
-const bcrypt = require("bcrypt");
-const saltRounds = 10;
+const mongoose = require("mongoose");
+const session = require("express-session");
+const passport = require("passport");
+const passportLocalMongoose = require("passport-local-mongoose");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const findOrCreate = require("mongoose-findorcreate");
+const { use } = require("passport");
 
+const app = express();
 app.set('view engine', 'ejs');
+app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("public"));
-app.use(bodyParser.urlencoded({extended:true}));
 
 ///////////////////////////custDB section///////////////////////////////////////
+app.use(session({
+    secret: "Our little secret.",
+    resave: false,
+    saveUninitialized: false
+}));
+app.use(passport.initialize());
+app.use(passport.session());
 
-const mongoose = require("mongoose");
-// const encrypt = require("mongoose-encryption");
-// mongoose.connect("mongodb://127.0.0.1:27017/custDB", {useNewUrlParser: true});
-mongoose 
- .connect("mongodb://127.0.0.1:27017/custDB", {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        useCreateIndex: true,   })   
- .then(() => console.log("Database connected!"))
- .catch(err => console.log(err));
+mongoose.connect("mongodb://127.0.0.1:27017/userDB", {useNewUrlParser: true});
 
 const custSchema = new mongoose.Schema({
     email: String, 
-    password: String
+    password: String,
+    googleId: String
 });
 
-// custSchema.plugin(encrypt, {secret: process.env.SECRET, encryptedFields:["password"]});
+custSchema.plugin(passportLocalMongoose);
+custSchema.plugin(findOrCreate);
+const Cust = new mongoose.model("Cust", custSchema); 
 
-const Cust = mongoose.model("Cust", custSchema); 
+passport.use(Cust.createStrategy());
+passport.serializeUser(function(cust, done){
+    done(null, cust.id);
+});
+passport.deserializeUser(function(id, done){
+    Cust.findById(id, function(err, cust){
+        done(err, cust);
+    })
+});
+
+passport.use(new GoogleStrategy({
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/home", 
+    userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
+    },
+    function(accessToken, refreshToken, profile, cb) {
+        console.log(profile);
+        Cust.findOrCreate({ googleId: profile.id }, function (err, cust) {
+            return cb(err, cust);
+        });
+    }
+));
 
 app.get("/", function(req, res){
     res.render("homesec");
@@ -94,7 +118,6 @@ app.get("/search", function(req, res){
         }
         else{
             res.render('search', {
-                // stripePublicKey: stripePublicKey,
                 items: JSON.parse(data)
             })
         }
@@ -107,7 +130,6 @@ app.get("/product", function(req, res){
         }
         else{
             res.render('product.ejs', {
-                // stripePublicKey: stripePublicKey,
                 items: JSON.parse(data)
             })
         }
@@ -120,7 +142,6 @@ app.get("/hoodies", function(req, res){
         }
         else{
             res.render('hoodies.ejs', {
-                // stripePublicKey: stripePublicKey,
                 items: JSON.parse(data)
             })
         }
@@ -133,7 +154,6 @@ app.get("/dresses", function(req, res){
         }
         else{
             res.render('dresses.ejs', {
-                // stripePublicKey: stripePublicKey,
                 items: JSON.parse(data)
             })
         }
@@ -153,17 +173,6 @@ app.get("/cart", function(req, res){
     })
 });
 app.get("/wishlist", function(req, res){
-    // fs.readFile('items.json', function(error, data){
-    //     if(error){
-    //         res.status(500).end()
-    //     }
-    //     else{
-    //         res.render('wishlist', {
-    //             // stripePublicKey: stripePublicKey,
-    //             items: JSON.parse(data)
-    //         })
-    //     }
-    // });
     res.render("wishlist");
 });
 app.get("/contact", function(req, res){
